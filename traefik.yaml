@@ -1,0 +1,69 @@
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http: 
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+certificateResolvers:
+  myresolver:
+    acme: 
+      email: cmc_xbt@pm.me
+      storage: acme.json
+      httpChallenge:
+        entryPoint: web
+
+http:
+  routers:
+    router-dashboard:
+      rule: "Host('dashboard.mmtest.sobe.world')"
+      service: api@internal
+      middlewares:
+        - auth
+      tls:
+        certResolver: myresolver
+    router-mender:
+      rule: "Host(`mender.mmtest.sobe.world`)"
+      service: "service-mender"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: myresolver
+
+    router-mesh:
+      rule: "Host(`mesh.mmtest.sobe.world`)"
+      service: "service-mesh"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: myresolver
+
+services:
+  dashboard:
+    loadBalancer:
+      servers:
+        - url: "http://127.0.0.1:8080"  # The internal Traefik dashboard service
+
+  service-mender:
+    loadBalancer:
+      servers:
+        - url: "http://internal-mender-address:8083"
+        - url: "http://internal-mender-address:8081"
+
+  service-mesh:
+    loadBalancer:
+      servers:
+        - url: "http://meshcentral:4430"
+
+middlewares:
+  auth:
+    basicAuth:
+      users:
+        - "admin:unkillable"
