@@ -2,11 +2,11 @@
   "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
   "settings": {
     "plugins":{"enabled": false},
-    "cert": "mesh.mmtest.sobe.world",
+    "cert": "mesh.test.mm.sobe.world",
     "_WANonly": true,
     "sessionKey": "keymanmanofkeys",
     "Port": 4430,
-    "AliasPort": 443,
+    "AliasPort": 4430,
     "RelayPort": 8087,
     "redirPort": 8081,
     "_redirAliasPort": 8085,
@@ -24,7 +24,7 @@
       "NewAccounts": true,
       "localSessionRecording": false,
       "_userNameIsEmail": true,
-      "_certUrl": "https://mesh.mmtest.sobe.world",
+      "_certUrl": "https://mesh.test.mm.sobe.world",
       "AgentConfig": [ "webSocketMaskOverride=1" ]
     }
   }

@@ -13,26 +13,26 @@ services:
       - published: 443 # change here to 8443
         target: 443
         mode: host
-      - published: 8080
-        target: 8080
+      - published: 8050
+        target: 8050
         mode: host
     command:
-      - --providers.docker=true
-      - --providers.docker.network=proxy
-      - --providers.docker.exposedByDefault=false
-      - --entryPoints.web.address=:80
-      - --entryPoints.web.http.redirections.entryPoint.to=websecure
-      - --entryPoints.web.http.redirections.entryPoint.scheme=https
-      - --entryPoints.websecure.http.tls=true
-      - --certificatesresolvers.myresolver.acme.tlschallenge=true
-      - --certificatesresolvers.myresolver.acme.email=chris@zignage.com
-      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
-      - --entrypoints.websecure.address=:443
+      - "--providers.docker=true"
+      - "--providers.docker.network=proxy"
+      - "--providers.docker.exposedByDefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entryPoints.websecure.http.tls=true"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=chris@zignage.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--entrypoints.websecure.address=:443"
       - "--api.dashboard=true"
       - "--api.insecure=true"
       - "--log.level=INFO"
       - "--accesslog=true"
-      - --api.debug=true
+      - "--api.debug=true"
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
@@ -42,24 +42,26 @@ services:
     networks:
       - proxy
     labels:
-      - traefik.enable=true
-      - "traefik.http.routers.traefik.rule=Host(`dashboard.mmtest.sobe.world`)"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`dashboard.test.mm.sobe.world`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=myresolver"
 
   whoami:
     image: traefik/whoami:latest
-    ports:
-      - 8100:8100
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mywhoami.rule=Host(`whoami.mmtest.sobe.world`)"
-      - "traefik.http.routers.mywhoami.entrypoints=web"
-      - "traefik.http.services.mywhoami.loadbalancer.server.port=8100"
+      - "traefik.http.routers.mywhoami.rule=Host(`whoami.test.mm.sobe.world`)"
+      - "traefik.http.routers.mywhoami.entrypoints=websecure"
+      - "traefik.http.services.mywhoami.loadbalancer.server.port=80"
+      - "traefik.http.routers.mywhoami.tls.certresolver=myresolver"
       - "traefik.docker.network=proxy"
     networks:
       - proxy
+
+
+
 
   mongodb:
     restart: always
@@ -91,14 +93,14 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.meshcentral-secured.entrypoints=websecure"
-      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh.mmtest.sobe.world`)"
+      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh.test.mm.sobe.world`)"
       - "traefik.http.services.meshcentral.loadbalancer.server.port=4430"
       - "traefik.docker.network=proxy"
     networks:
       - meshcentral-tier
       - proxy
     environment:
-      - HOSTNAME=mesh.mmtest.sobe.world     #your hostname
+      - HOSTNAME=mesh.test.mm.sobe.world     #your hostname
       - REVERSE_PROXY=172.17.0.2     #set to your reverse proxy IP if you want to put meshcentral behind a reverse proxy
       - REVERSE_PROXY_TLS_PORT=443
       - IFRAME=false    #set to true if you wish to enable iframe support
@@ -107,7 +109,7 @@ services:
       - BACKUPS_PW=MyAwesomePasswordPleaseChangeMe #password for the autobackup function
       - BACKUP_INTERVAL=24 # Interval in hours for the autobackup function
       - BACKUP_KEEP_DAYS=10 #number of days of backups the function keeps
-      - VIRTUAL_HOST=mesh.mmtest.sobe.world
+      - VIRTUAL_HOST=mesh.test.mm.sobe.world
       - VIRTUAL_PORT=4430
       - NODE_ENV=production
       - LETSENCRYPT_HOST=mesh.mmtest.sobe.world
