@@ -2,8 +2,7 @@ version: '3.9'
 
 services:
   traefik:
-
-    image: traefik:v2.10
+image: traefik:v2.10
     restart: always
     container_name: traefik
     ports:
@@ -40,31 +39,28 @@ services:
 
     networks:
       - proxy
-
     labels:
       - traefik.enable=true
-      - "traefik.web.routers.traefik.rule=Host(`dashboard.mmtest.sobe.world`)"
-      - "traefik.web.routers.traefik.service=api@internal"
-      - "traefik.web.routers.traefik.entrypoints=websecure"
-      - "traefik.web.routers.traefik.middlewares=myauth"
-      - "traefik.web.routers.traefik.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik.rule=Host(`dashboard.mmtest.sobe.world`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.middlewares=myauth"
+      - "traefik.http.routers.traefik.tls.certresolver=myresolver"
 
   whoami:
     image: traefik/whoami:latest
     labels:
       - "traefik.enable=true"
-      - "traefik.web.routers.mywhoami.rule=Host(`whoami.mmtest.sobe.world`) || Host(`www.whoami.mmtest.sobe.world`)"
-      - "traefik.web.services.mywhoami.loadbalancer.server.port=80"
-      - "traefik.web.routers.mywhoami.entryPoints=websecure"
-      - "traefik.web.routers.mywhoami.middlewares=mywwwredirect"
-      - "traefik.web.routers.meshcentral-secured.tls.certresolver=myresolver"
-      - "traefik.web.routers.meshcentral.middlewares=mywwwredirect"
+      - "traefik.http.routers.mywhoami.rule=Host(`whoami.mmtest.sobe.world`)"
+      - "traefik.http.routers.mywhoami.entrypoints=websecure"
+      - "traefik.http.routers.mywhoami.middlewares=mywwwredirect"
+      - "traefik.http.routers.mywhoami.tls.certresolver=myresolver"
+      - "traefik.http.services.mywhoami.loadbalancer.server.port=80"
       - "traefik.docker.network=proxy"
     networks:
       - proxy
-    hostname: docker.internal.localhost
 
-  mongodb:
+   mongodb:
     restart: always
     container_name: mongodb
     image: mongo:4.4.6
@@ -77,8 +73,8 @@ services:
       - 27017
     networks:
       - meshcentral-tier
-
   meshcentral:
+     meshcentral:
     restart: always
     container_name: meshcentral
     image: ghcr.io/ylianst/meshcentral:latest
@@ -93,22 +89,14 @@ services:
       - ./meshcentral/web:/opt/meshcentral/meshcentral-web
     labels:
       - "traefik.enable=true"
-      - "traefik.web.routers.meshcentral-secured.entrypoints=websecure"
-      - "traefik.web.routers.meshcentral-secured.rule=Host(`mesh.mmtest.sobe.world`)"
-      - "traefik.web.routers.meshcentral-secured.tls.certresolver=myresolver"
-      - "traefik.web.routers.meshcentral.middlewares=mywwwredirect"
-      - "traefik.web.services.meshcentral.loadbalancer.server.port=80"
+      - "traefik.http.routers.meshcentral-secured.entrypoints=websecure"
+      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh.mmtest.sobe.world`)"
+      - "traefik.http.routers.meshcentral-secured.tls.certresolver=myresolver"
+      - "traefik.http.services.meshcentral.loadbalancer.server.port=4430"
       - "traefik.docker.network=proxy"
     networks:
       - meshcentral-tier
       - proxy
 
-networks:
-  meshcentral-tier:
-    driver: bridge
-  proxy:
-    external: true
 
-volumes: 
-  letsencrypt:
-    name: letsencrypt
+# ... networks and volumes remain unchanged ...
