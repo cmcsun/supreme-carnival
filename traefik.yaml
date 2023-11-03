@@ -20,6 +20,7 @@ certificateResolvers:
       httpChallenge:
         entryPoint: web
 
+
 http:
   routers:
     router-dashboard:
@@ -46,11 +47,6 @@ http:
         certResolver: myresolver
 
 services:
-  dashboard:
-    loadBalancer:
-      servers:
-        - url: "http://127.0.0.1:8080"  # The internal Traefik dashboard service
-
   service-mender:
     loadBalancer:
       servers:
@@ -66,4 +62,4 @@ middlewares:
   auth:
     basicAuth:
       users:
-        - "admin:unkillable"
+        - "admin:$apr1$fbTzrrUv$A69VmOgtUUE5YcEwpxJHe/"

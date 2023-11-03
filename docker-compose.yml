@@ -16,13 +16,13 @@ services:
       - --providers.file.filename=/dynamic.yml # Referring to the https upgrade file
       - --providers.docker.network=web # Use the docker network web for communication between traefik and containser
       - --entrypoints.web.address=:80 # Define an entrypoint for port :80 named web (this can be whatever)
-      - --certificatesresolvers.mytlschallenge.acme.tlschallenge=true
-      - --certificatesresolvers.mytlschallenge.acme.email=chris@zignage.com
-      - --certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.myresolver.acme.tlschallenge=true
+      - --certificatesresolvers.myresolver.acme.email=chris@zignage.com
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
       - --entrypoints.websecure.address=:443
       - "--api.dashboard=true"
       - "--log.level=DEBUG"
-        #- --entrypoints.http.address=:80
+      - --entrypoints.http.address=:8080
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
       - /var/run/docker.sock:/var/run/docker.sock # Volume for docker admin
@@ -33,20 +33,19 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=web
-      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.router-dashboard.entrypoints=http"
       - "traefik.http.routers.traefik.rule=Host(dashboard.mmtest.sobe.world)"
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:traefik"
       - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
-      - "traefik.http.routers.traefik-secure.entrypoints=https"
-      - "traefik.http.routers.traefik-secure.rule=Host(dashboard.mmtest.sobe.world)"
-      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
-      - "traefik.http.routers.traefik-secure.tls=true"
-      - "traefik.http.routers.traefik-secure.tls.certresolver=myresolver"
-      - "traefik.http.routers.traefik-secure.tls.domains[0].main=mmtest.sobe.world"
-      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.mmtest.sobe.world"
-      - "traefik.http.routers.traefik-secure.service=api@internal"
+      - "traefik.http.routers.router-dashboard.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.router-dashboard.entrypoints=https"
+      - "traefik.http.routers.router-dashboard.rule=Host(dashboard.mmtest.sobe.world)"
+      - "traefik.http.routers.router-dashboard.middlewares=traefik-auth"
+      - "traefik.http.routers.router-dashboard.tls=true"
+      - "traefik.http.routers.router-dashboard.tls.certresolver=myresolver"
+      - "traefik.http.routers.router-dashboard.tls.domains[0].main=mmtest.sobe.world"
+      - "traefik.http.routers.router-dashboard.tls.domains[0].sans=*.mmtest.sobe.world"
+      - "traefik.http.routers.router-dashboard.service=api@internal"
 
   mongodb:
     restart: always
