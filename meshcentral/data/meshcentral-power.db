@@ -1,8 +1,0 @@
-{"time":{"$$date":1698966360994},"nodeid":"*","power":0,"s":1,"_id":"DkdyCL8wCY4gzSib"}
-{"time":{"$$date":1698966249371},"nodeid":"*","power":0,"s":1,"_id":"FoCNDo0mGCCdBhca"}
-{"time":{"$$date":1698968192182},"nodeid":"*","power":0,"s":1,"_id":"IW1wPcAefNxxKZvw"}
-{"time":{"$$date":1698966058113},"nodeid":"*","power":0,"s":1,"_id":"YC0qdvI8WzwDGigT"}
-{"time":{"$$date":1698966436242},"nodeid":"*","power":0,"s":1,"_id":"eI3bbMWRCVxrpl2b"}
-{"$$indexCreated":{"fieldName":"nodeid","unique":false,"sparse":false}}
-{"$$indexCreated":{"fieldName":"time","unique":false,"sparse":false}}
-{"time":{"$$date":1698968362068},"nodeid":"*","power":0,"s":1,"_id":"s4fLWbVgELOTUT2l"}
