@@ -3,22 +3,18 @@ version: '3.9'
 services:
   traefik:
 
-
     image: traefik:v2.10
     restart: always
     container_name: traefik
     ports:
       - published: 80 # change here to 8080
         target: 80
-        protocol: tcp
         mode: host
       - published: 443 # change here to 8443
         target: 443
-        protocol: tcp
         mode: host
       - published: 8080
         target: 8080
-        protoncol: tcp
         mode: host
     command:
       - --providers.docker=true
@@ -99,10 +95,9 @@ services:
       - "traefik.enable=true"
       - "traefik.web.routers.meshcentral-secured.entrypoints=websecure"
       - "traefik.web.routers.meshcentral-secured.rule=Host(`mesh.mmtest.sobe.world`)"
-      - "traefik.web.routers.meshcentral-secured.entrypoints=websecure"
       - "traefik.web.routers.meshcentral-secured.tls.certresolver=myresolver"
       - "traefik.web.routers.meshcentral.middlewares=mywwwredirect"
-      - "traefik.web.services.meshcentral.loadbalancer.server.port=4430"
+      - "traefik.web.services.meshcentral.loadbalancer.server.port=80"
       - "traefik.docker.network=proxy"
     networks:
       - meshcentral-tier
