@@ -1,32 +1,3 @@
 api:
   dashboard: true
-
-http:
-  routers:
-    router-mender:
-      rule: "Host(`mender.mmtest.sobe.world`)"
-      service: "service-mender"
-      entryPoints:
-        - "websecure"
-      tls:
-        certResolver: myresolver
-
-    router-mesh:
-      rule: "Host(`mesh.mmtest.sobe.world`)"
-      service: "service-mesh"
-      entryPoints:
-        - "websecure"
-      tls:
-        certResolver: myresolver
-
-services:
-  service-mender:
-    loadBalancer:
-      servers:
-        - url: "http://internal-mender-address:8083"
-        - url: "http://internal-mender-address:8081"
-
-  service-mesh:
-    loadBalancer:
-      servers:
-        - url: "http://meshcentral:4430"
+  insecure: true
