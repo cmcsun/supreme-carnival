@@ -6,8 +6,9 @@ services:
     restart: always
     container_name: traefik
     ports:
-      - "80:80" # http
-      - "443:443" # https
+      - '80:80' # http
+      - '443:443' # https
+      - '8080:8080' #dashboard port
     command:
       ## Provider Settings - https://docs.traefik.io/providers/docker/#provider-configuration ##
       - --providers.docker=true # Set docker as the provider for traefik
@@ -19,8 +20,8 @@ services:
       - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
       - --entrypoints.websecure.address=:443
       - "--api.dashboard=true"
+      - --api.insecure=true
       - "--log.level=DEBUG"
-      - "--accesslog=true"
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
       - /var/run/docker.sock:/var/run/docker.sock # Volume for docker admin
@@ -39,6 +40,49 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.middlewares=myauth"
       - "traefik.http.routers.traefik.tls.certresolver=myresolver"
+
+  mongodb:
+    restart: always
+    container_name: mongodb
+    image: mongo:4.4.6
+    tty: true
+    env_file:
+      - .env
+    volumes:
+      - ./meshcentral/mongodb_data:/data/db
+    expose:
+      - 27017
+    networks:
+      - meshcentral-tier
+      - web
+
+  meshcentral:
+    restart: always
+    container_name: meshcentral
+    # use the official meshcentral container
+    image: ghcr.io/ylianst/meshcentral:latest
+    depends_on:
+      - mongodb
+    ports:
+      - 4430:4430
+    volumes: # The volumes will be created automaticly if they do not exists. The only directory that should exist when installing fresh is is meshcentral/data
+      - ./meshcentral/data:/opt/meshcentral/meshcentral-data
+      - ./meshcentral/user_files:/opt/meshcentral/meshcentral-files
+      - ./meshcentral/backup:/opt/meshcentral/meshcentral-backup
+      - ./meshcentral/web:/opt/meshcentral/meshcentral-web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.meshcentral-web.rule=Host(`mmtest.sobe.world`)"
+      - "traefik.http.routers.meshcentral-web.entrypoints=web"
+        # - "traefik.http.routers.meshcentral-web.middlewares=redirect@file"
+      - "traefik.http.routers.meshcentral-secured.rule=Host(`mmtest.sobe.world`)"
+      - "traefik.http.routers.meshcentral-secured.entrypoints=websecure"
+      - "traefik.http.routers.meshcentral-secured.tls.certresolver=myresolver"
+      - "traefik.http.services.meshcentral.loadbalancer.server.port=4430"
+      - "traefik.docker.network=web"
+    networks:
+      - meshcentral-tier
+      - web
 
   whoami:
     image: traefik/whoami
