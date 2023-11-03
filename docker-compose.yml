@@ -1,8 +1,9 @@
 version: '3.9'
 
 services:
+  
   traefik:
-image: traefik:v2.10
+    image: traefik:v2.10
     restart: always
     container_name: traefik
     ports:
@@ -28,14 +29,15 @@ image: traefik:v2.10
       - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
       - --entrypoints.websecure.address=:443
       - "--api.dashboard=true"
-      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--log.level=INFO"
       - "--accesslog=true"
       - --api.debug=true
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
       - /var/run/docker.sock:/var/run/docker.sock # Volume for docker admin
       - /home/zignage/traefik/supreme-carnival/.htpasswd:/.htpasswd
-      - ./traefik.yaml:/etc/traefik/traefik.yml:ro
 
     networks:
       - proxy
@@ -44,23 +46,22 @@ image: traefik:v2.10
       - "traefik.http.routers.traefik.rule=Host(`dashboard.mmtest.sobe.world`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.middlewares=myauth"
       - "traefik.http.routers.traefik.tls.certresolver=myresolver"
 
   whoami:
     image: traefik/whoami:latest
+    ports:
+      - 8100:8100
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mywhoami.rule=Host(`whoami.mmtest.sobe.world`)"
-      - "traefik.http.routers.mywhoami.entrypoints=websecure"
-      - "traefik.http.routers.mywhoami.middlewares=mywwwredirect"
-      - "traefik.http.routers.mywhoami.tls.certresolver=myresolver"
-      - "traefik.http.services.mywhoami.loadbalancer.server.port=80"
+      - "traefik.http.routers.mywhoami.entrypoints=web"
+      - "traefik.http.services.mywhoami.loadbalancer.server.port=8100"
       - "traefik.docker.network=proxy"
     networks:
       - proxy
 
-   mongodb:
+  mongodb:
     restart: always
     container_name: mongodb
     image: mongo:4.4.6
@@ -73,11 +74,11 @@ image: traefik:v2.10
       - 27017
     networks:
       - meshcentral-tier
+
   meshcentral:
-     meshcentral:
     restart: always
     container_name: meshcentral
-    image: ghcr.io/ylianst/meshcentral:latest
+    image: typhonragewind/meshcentral:latest
     depends_on:
       - mongodb
     ports:
@@ -91,12 +92,34 @@ image: traefik:v2.10
       - "traefik.enable=true"
       - "traefik.http.routers.meshcentral-secured.entrypoints=websecure"
       - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh.mmtest.sobe.world`)"
-      - "traefik.http.routers.meshcentral-secured.tls.certresolver=myresolver"
       - "traefik.http.services.meshcentral.loadbalancer.server.port=4430"
       - "traefik.docker.network=proxy"
     networks:
       - meshcentral-tier
       - proxy
+    environment:
+      - HOSTNAME=mesh.mmtest.sobe.world     #your hostname
+      - REVERSE_PROXY=172.17.0.2     #set to your reverse proxy IP if you want to put meshcentral behind a reverse proxy
+      - REVERSE_PROXY_TLS_PORT=443
+      - IFRAME=false    #set to true if you wish to enable iframe support
+      - ALLOW_NEW_ACCOUNTS=true    #set to false if you want disable self-service creation of new accounts besides the first (admin)
+      - WEBRTC=false  #set to true to enable WebRTC - per documentation it is not officially released with meshcentral, but is solid enough to work with. Use with caution
+      - BACKUPS_PW=MyAwesomePasswordPleaseChangeMe #password for the autobackup function
+      - BACKUP_INTERVAL=24 # Interval in hours for the autobackup function
+      - BACKUP_KEEP_DAYS=10 #number of days of backups the function keeps
+      - VIRTUAL_HOST=mesh.mmtest.sobe.world
+      - VIRTUAL_PORT=4430
+      - NODE_ENV=production
+      - LETSENCRYPT_HOST=mesh.mmtest.sobe.world
+      - LETSENCRYPT_EMAIL=ggmethos@autistici.org
 
+networks:
+  meshcentral-tier:
+    driver: bridge
+  proxy:
+    external: true
 
-# ... networks and volumes remain unchanged ...
+volumes: 
+  letsencrypt:
+    name: letsencrypt
+

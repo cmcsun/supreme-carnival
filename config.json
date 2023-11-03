@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
+  "settings": {
+    "plugins":{"enabled": false},
+    "cert": "mesh.mmtest.sobe.world",
+    "_WANonly": true,
+    "sessionKey": "keymanmanofkeys",
+    "Port": 4430,
+    "AliasPort": 443,
+    "RelayPort": 8087,
+    "redirPort": 8081,
+    "_redirAliasPort": 8085,
+    "AgentPong": 300,
+    "TLSOffload": "*",
+    "SelfUpdate": false,
+    "AllowFraming": false,
+    "WebRTC": false
+  },
+  "domains": {
+    "": {
+      "_title": "MeshCentral",
+      "_title2": "Mesh Central",
+      "minify": true,
+      "NewAccounts": true,
+      "localSessionRecording": false,
+      "_userNameIsEmail": true,
+      "_certUrl": "https://mesh.mmtest.sobe.world",
+      "AgentConfig": [ "webSocketMaskOverride=1" ]
+    }
+  }
+}
+
