@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   traefik:
-    image: traefik:v2.10
+    image: traefik:v3.0
     restart: always
     container_name: traefik
     ports:
@@ -13,8 +13,7 @@ services:
       ## Provider Settings - https://docs.traefik.io/providers/docker/#provider-configuration ##
       - --providers.docker=true # Set docker as the provider for traefik
       - --providers.docker.exposedbydefault=false # You need to whitelist containers that will be exposed to traefik
-      - --providers.file.filename=/dynamic.yml # Referring to the https upgrade file
-      - --providers.docker.network=web # Use the docker network web for communication between traefik and containser
+      - --providers.docker.network=proxy # Use the docker network web for communication between traefik and containser
       - --entrypoints.web.address=:80 # Define an entrypoint for port :80 named web (this can be whatever)
       - --certificatesresolvers.myresolver.acme.tlschallenge=true
       - --certificatesresolvers.myresolver.acme.email=chris@zignage.com
@@ -26,26 +25,18 @@ services:
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
       - /var/run/docker.sock:/var/run/docker.sock # Volume for docker admin
-      - ./traefik.yaml:/etc/traefik/traefik.yml:ro
+        #- ./traefik.yaml:/etc/traefik/traefik.yml:ro
+      - /home/zignage/traefik/supreme-carnival/.htpasswd:/.htpasswd
+
     networks:
       - web # Tell the container that it has access to this network
+      - proxy
 
     labels:
       - traefik.enable=true
-      - traefik.docker.network=web
-      - "traefik.http.routers.router-dashboard.entrypoints=http"
-      - "traefik.http.routers.traefik.rule=Host(dashboard.mmtest.sobe.world)"
-      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.routers.router-dashboard.middlewares=traefik-https-redirect"
-      - "traefik.http.routers.router-dashboard.entrypoints=https"
-      - "traefik.http.routers.router-dashboard.rule=Host(dashboard.mmtest.sobe.world)"
-      - "traefik.http.routers.router-dashboard.middlewares=traefik-auth"
-      - "traefik.http.routers.router-dashboard.tls=true"
-      - "traefik.http.routers.router-dashboard.tls.certresolver=myresolver"
-      - "traefik.http.routers.router-dashboard.tls.domains[0].main=mmtest.sobe.world"
-      - "traefik.http.routers.router-dashboard.tls.domains[0].sans=*.mmtest.sobe.world"
-      - "traefik.http.routers.router-dashboard.service=api@internal"
+      - traefik.http.middlewares.myauth.basicauth.users=admin:$apr1$fbTzrrUv$A69VmOgtUUE5YcEwpxJHe/
+      - traefik.http.routers.mydashboard.rule=Host(`dashboard.mmtest.sobe.world, www.dashboard.mmtest.sobe.world`)
+      - traefik.http.routers.mydashboard.service=api@internal
 
   mongodb:
     restart: always
@@ -91,10 +82,17 @@ services:
       - web
 
   whoami:
-    # A container that exposes an API to show its IP address
     image: traefik/whoami
     labels:
-      - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
+      - "traefik.enable=true"
+      - "traefik.http.routers.mywhoami.rule=Host(`whoami.mmtest.sobe.world`) || Host(`www.whoami.mmtest.sobe.world`)"
+      - "traefik.http.services.mywhoami.loadbalancer.server.port=80"
+      - traefik.http.middlewares.mywwwredirect.redirectregex.regex=^https://www\.(.*)
+      - traefik.http.middlewares.mywwwredirect.redirectregex.replacement=https://$${1}
+      - "traefik.http.routers.mywhoami.middlewares=mywwwredirect"
+    networks:
+      - proxy
+
 
 networks:
   meshcentral-tier:
@@ -103,3 +101,9 @@ networks:
     external: true
   web:
     external: true
+  proxy:
+    name: proxy
+
+volumes: 
+  letsencrypt:
+    name: letsencrypt
