@@ -1,127 +1,4 @@
-version: '3.7'
-
 version: '3.9'
-
-services:
-  traefik:
-    image: traefik:v2.9
-    ports:
-      - published: 80 # change here to 8080
-        target: 80
-        protocol: tcp
-        mode: host
-      - published: 443 # change here to 8443
-        target: 443
-        protocol: tcp
-        mode: host
-    networks:
-      - proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /root/traefik-certificates:/traefik-certificates
-    command:
-      --providers.docker=true
-      --providers.docker.network=proxy
-      --providers.docker.exposedByDefault=false
-      --entryPoints.web.address=:80
-      --entryPoints.web.http.redirections.entryPoint.to=websecure
-      --entryPoints.web.http.redirections.entryPoint.scheme=https
-      --entryPoints.websecure.address=:443
-      --entryPoints.websecure.http.tls=true
-      --api.debug=true
-      --api.dashboard=true
-      --log.level=DEBUG
-      --accesslog=true
-      # for changed external ports you need to use dnschallenge
-      --certificatesResolvers.myresolver.acme.email=mail@example.com
-      --certificatesResolvers.myresolver.acme.tlschallenge=true
-      --certificatesResolvers.myresolver.acme.storage=/traefik-certificates/acme.json
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.mydashboard.entrypoints=websecure
-      - traefik.http.routers.mydashboard.rule=Host(`traefik.example.com`)
-      - traefik.http.routers.mydashboard.tls.certresolver=myresolver
-      - traefik.http.routers.mydashboard.service=api@internal
-      - traefik.http.routers.mydashboard.middlewares=myauth
-      - traefik.http.middlewares.myauth.basicauth.users=test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/
-
-  whoami:
-    image: traefik/whoami:v1.8
-    networks:
-      - proxy
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.mywhoami.entrypoints=websecure
-      - traefik.http.routers.mywhoami.rule=Host(`example.com`) || Host(`www.example.com`)
-      - traefik.http.routers.mywhoami.tls.certresolver=myresolver
-      - traefik.http.services.mywhoami.loadbalancer.server.port=80
-
-networks:
-  proxy:
-    name: proxy
-    attachable: true
-
-
-services:
-  traefik:
-    image: traefik:v2.9
-    ports:
-      - published: 80 # change here to 8080
-        target: 80
-        protocol: tcp
-        mode: host
-      - published: 443 # change here to 8443
-        target: 443
-        protocol: tcp
-        mode: host
-    networks:
-      - proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /root/traefik-certificates:/traefik-certificates
-    command:
-      --providers.docker=true
-      --providers.docker.network=proxy
-      --providers.docker.exposedByDefault=false
-      --entryPoints.web.address=:80
-      --entryPoints.web.http.redirections.entryPoint.to=websecure
-      --entryPoints.web.http.redirections.entryPoint.scheme=https
-      --entryPoints.websecure.address=:443
-      --entryPoints.websecure.http.tls=true
-      --api.debug=true
-      --api.dashboard=true
-      --log.level=DEBUG
-      --accesslog=true
-      # for changed external ports you need to use dnschallenge
-      --certificatesResolvers.myresolver.acme.email=mail@example.com
-      --certificatesResolvers.myresolver.acme.tlschallenge=true
-      --certificatesResolvers.myresolver.acme.storage=/traefik-certificates/acme.json
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.mydashboard.entrypoints=websecure
-      - traefik.http.routers.mydashboard.rule=Host(`traefik.example.com`)
-      - traefik.http.routers.mydashboard.tls.certresolver=myresolver
-      - traefik.http.routers.mydashboard.service=api@internal
-      - traefik.http.routers.mydashboard.middlewares=myauth
-      - traefik.http.middlewares.myauth.basicauth.users=test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/
-
-  whoami:
-    image: traefik/whoami:v1.8
-    networks:
-      - proxy
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.mywhoami.entrypoints=websecure
-      - traefik.http.routers.mywhoami.rule=Host(`example.com`) || Host(`www.example.com`)
-      - traefik.http.routers.mywhoami.tls.certresolver=myresolver
-      - traefik.http.services.mywhoami.loadbalancer.server.port=80
-
-networks:
-  proxy:
-    name: proxy
-    attachable: true
-
-
 
 services:
   traefik:
@@ -131,15 +8,26 @@ services:
     restart: always
     container_name: traefik
     ports:
-      - "80:80" # http
-      - "443:443" # https
-      - "8080:8080"
+      - published: 80 # change here to 8080
+        target: 80
+        protocol: tcp
+        mode: host
+      - published: 443 # change here to 8443
+        target: 443
+        protocol: tcp
+        mode: host
+      - published: 8080
+        target: 8080
+        protoncol: tcp
+        mode: host
     command:
-      ## Provider Settings - https://docs.traefik.io/providers/docker/#provider-configuration ##
-      - --providers.docker=true # Set docker as the provider for traefik
-      - --providers.docker.exposedbydefault=false # You need to whitelist containers that will be exposed to traefik
-      - --providers.docker.network=proxy # Use the docker network web for communication between traefik and containser
-      - --entrypoints.web.address=:80 # Define an entrypoint for port :80 named web (this can be whatever)
+      - --providers.docker=true
+      - --providers.docker.network=proxy
+      - --providers.docker.exposedByDefault=false
+      - --entryPoints.web.address=:80
+      - --entryPoints.web.http.redirections.entryPoint.to=websecure
+      - --entryPoints.web.http.redirections.entryPoint.scheme=https
+      - --entryPoints.websecure.http.tls=true
       - --certificatesresolvers.myresolver.acme.tlschallenge=true
       - --certificatesresolvers.myresolver.acme.email=chris@zignage.com
       - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
@@ -147,6 +35,7 @@ services:
       - "--api.dashboard=true"
       - "--log.level=DEBUG"
       - "--accesslog=true"
+      - --api.debug=true
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
       - /var/run/docker.sock:/var/run/docker.sock # Volume for docker admin
@@ -165,15 +54,16 @@ services:
       - "traefik.web.routers.traefik.tls.certresolver=myresolver"
 
   whoami:
-    image: traefik/whoami
+    image: traefik/whoami:latest
     labels:
       - "traefik.enable=true"
       - "traefik.web.routers.mywhoami.rule=Host(`whoami.mmtest.sobe.world`) || Host(`www.whoami.mmtest.sobe.world`)"
       - "traefik.web.services.mywhoami.loadbalancer.server.port=80"
-      - "traefik.web.routers.mywhoami.entryPoints=web"
-      - traefik.web.middlewares.mywwwredirect.redirectregex.regex=^https://www\.(.*)
-      - traefik.web.middlewares.mywwwredirect.redirectregex.replacement=https://$${1}
+      - "traefik.web.routers.mywhoami.entryPoints=websecure"
       - "traefik.web.routers.mywhoami.middlewares=mywwwredirect"
+      - "traefik.web.routers.meshcentral-secured.tls.certresolver=myresolver"
+      - "traefik.web.routers.meshcentral.middlewares=mywwwredirect"
+      - "traefik.docker.network=proxy"
     networks:
       - proxy
     hostname: docker.internal.localhost
@@ -207,21 +97,20 @@ services:
       - ./meshcentral/web:/opt/meshcentral/meshcentral-web
     labels:
       - "traefik.enable=true"
-      - "traefik.web.routers.meshcentral-web.rule=Host(`mesh.mmtest.sobe.world`)"
-      - "traefik.web.routers.meshcentral-web.entrypoints=web"
+      - "traefik.web.routers.meshcentral-secured.entrypoints=websecure"
       - "traefik.web.routers.meshcentral-secured.rule=Host(`mesh.mmtest.sobe.world`)"
       - "traefik.web.routers.meshcentral-secured.entrypoints=websecure"
       - "traefik.web.routers.meshcentral-secured.tls.certresolver=myresolver"
+      - "traefik.web.routers.meshcentral.middlewares=mywwwredirect"
       - "traefik.web.services.meshcentral.loadbalancer.server.port=4430"
-      - "traefik.docker.network=web"
+      - "traefik.docker.network=proxy"
     networks:
       - meshcentral-tier
+      - proxy
 
 networks:
   meshcentral-tier:
     driver: bridge
-  reverse_proxy:
-    external: true
   proxy:
     external: true
 
