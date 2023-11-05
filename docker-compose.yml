@@ -54,34 +54,21 @@ services:
       - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}"
       - "traefik.http.middlewares.traefik-auth.basicauth.removeheader=true"
       - "traefik.http.routers.traefik-ui.middlewares=traefik-auth"
-      #- "traefik.http.middlewares.redirect-regex.redirectregex.replacement=https://mender2.zignage.sobe.world"
-      #- "traefik.http.middlewares.redirect-regex.redirectregex.permanent=false"
 
   nginx-proxy:
     image: jwilder/nginx-proxy
     container_name: nginx-proxy
     ports:
-      - "11880:8082"
-      - "12884:8084"
+      - "3333:3333"
     volumes:
       - certs:/etc/nginx/certs
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nginxproxy.entrypoints=websecure"
-      - "traefik.http.routers.nginxproxy.tls.certresolver=myresolver"
-      - "traefik.http.routers.nginxproxy.rule=Host(`nginxrp.zignage.sobe.world`)"
-      - "traefik.http.services.nginxproxy.loadbalancer.server.port=11880"
-      - "traefik.docker.network=tproxy"
     environment:
-      VIRTUAL_HOST: mender4.zignage.sobe.world
-      LETSENCRYPT_HOST: mender4.zignage.sobe.world
-      VIRTUAL_PORT: 8084
-    networks:
-      - nginxrp
-      - tproxy
+      VIRTUAL_HOST: graf1.ztest.sobe.world
+      LETSENCRYPT_HOST: graf1.ztest.sobe.world
+      VIRTUAL_PORT: 445
 
   nginx-proxy-acme:
     image: nginxproxy/acme-companion
@@ -103,7 +90,7 @@ services:
     image: traefik/whoami:latest
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mywhoami.rule=Host(`whoami4.zignage.sobe.world`)"
+      - "traefik.http.routers.mywhoami.rule=Host(`whoami1.ztest.sobe.world`)"
       - "traefik.http.routers.mywhoami.entrypoints=websecure"
       - "traefik.http.services.mywhoami.loadbalancer.server.port=80"
       - "traefik.http.routers.mywhoami.tls.certresolver=myresolver"
@@ -111,30 +98,48 @@ services:
     networks:
       - tproxy
 
+        #grafana:
+        # image: grafana/grafana:latest
+        #user: root
+        #volumes:
+        # - ${GRAFANA_VOLUME}:/var/lib/grafana
+        #- ./compose/grafana/provisioning/:/etc/grafana/provisioning
+        #- ./infrastructure/config/grafana/grafana.ini:/etc/grafana/grafana.ini
+        #- ./infrastructure/config/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+        # environment:
+        #GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
+        #GF_INSTALL_PLUGINS: grafana-piechart-panel
+        #VIRTUAL_HOST: graf1.ztest.sobe.world
+        #restart: unless-stopped
+        #logging:
+        #options:
+        # max-size: "10m"
+        # max-file: "3"     
+
+
   grafana:
-    image: grafana/grafana
-    user: root
-    volumes:
-      - ${GRAFANA_VOLUME}:/var/lib/grafana
-      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    image: grafana/grafana:latest
+    build:
+      context: ""
+      dockerfile: Dockerfile
+    container_name: grafana
     environment:
       GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
       GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "3000:3000"
     labels:
-      - "traefik.http.routers.grafana.rule=Host(`graf1.zignage.sobe.world`)"
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`graf1.ztest.sobe.world`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
-      - "traefik.http.routers.grafana.service=grafana"
-      - "traefik.docker.network=tproxy"
+    volumes:
+      - grafana-data:/var/lib/grafana
     networks:
+      - grafnet
       - appnet
       - tproxy
-    restart: unless-stopped
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"     
 
 
   prometheus:
@@ -149,7 +154,7 @@ services:
       - '--storage.tsdb.retention.size=256MB'
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`prom1.zignage.sobe.world`)"
+      - "traefik.http.routers.prometheus.rule=Host(`prom1.ztest.sobe.world`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
       - "traefik.http.routers.prometheus.tls.certresolver=myresolver"
@@ -193,14 +198,14 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.meshcentral-secured.entrypoints=websecure"
-      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh4.zignage.sobe.world`)"
+      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh1.ztest.sobe.world`)"
       - "traefik.http.services.meshcentral.loadbalancer.server.port=4430"
       - "traefik.docker.network=tproxy"
     networks:
       - meshcentral-tier
       - tproxy
     environment:
-      - HOSTNAME=mesh4.zignage.sobe.world     #your hostname
+      - HOSTNAME=mesh1.ztest.sobe.world     #your hostname
       - REVERSE_PROXY=localhost     #set to your reverse proxy IP if you want to put meshcentral behind a reverse proxy
       - REVERSE_PROXY_TLS_PORT=443
       - IFRAME=false    #set to true if you wish to enable iframe support
@@ -209,10 +214,10 @@ services:
       - BACKUPS_PW=MyAwesomePasswordPleaseChangeMe #password for the autobackup function
       - BACKUP_INTERVAL=24 # Interval in hours for the autobackup function
       - BACKUP_KEEP_DAYS=10 #number of days of backups the function keeps
-      - VIRTUAL_HOST=mesh4.zignage.sobe.world
+      - VIRTUAL_HOST=mesh1.ztest.sobe.world
       - VIRTUAL_PORT=4430
       - NODE_ENV=production
-      - LETSENCRYPT_HOST=mesh4.zignage.sobe.world
+      - LETSENCRYPT_HOST=mesh1.ztest.sobe.world
       - LETSENCRYPT_EMAIL=ggmethos@autistici.org
 
 networks:
@@ -227,6 +232,10 @@ networks:
     name: nginxrp
   web:
     name: web
+  grafnet:
+    name: grafnet
+    driver: bridge
+
 
 volumes: 
   letsencrypt:
@@ -235,4 +244,4 @@ volumes:
   vhost:
   html:
   acme:
-
+  grafana-data:
