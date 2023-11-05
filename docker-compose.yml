@@ -113,8 +113,6 @@ services:
 
   grafana:
     image: grafana/grafana
-    depends_on:
-      - prometheus
     user: root
     volumes:
       - ${GRAFANA_VOLUME}:/var/lib/grafana
@@ -127,6 +125,7 @@ services:
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.http.routers.grafana.service=grafana"
       - "traefik.docker.network=tproxy"
     networks:
       - appnet
@@ -153,7 +152,7 @@ services:
       - "traefik.http.routers.prometheus.rule=Host(`prom1.zignage.sobe.world`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
-      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.http.routers.prometheus.tls.certresolver=myresolver"
       - "traefik.docker.network=tproxy"
     networks:
       - appnet
@@ -218,15 +217,16 @@ services:
 
 networks:
   meshcentral-tier:
+    name: meshcentral-tier
     driver: bridge
   tproxy:
-    external: true
-
+    name: tproxy
   appnet:
-      name: appnet
-
+    name: appnet
   nginxrp:
-      external: true
+    name: nginxrp
+  web:
+    name: web
 
 volumes: 
   letsencrypt:
