@@ -18,7 +18,7 @@ services:
         mode: host
     command:
       - "--providers.docker=true"
-      - "--providers.docker.network=proxy"
+      - "--providers.docker.network=tproxy"
       - "--providers.docker.exposedByDefault=false"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
@@ -29,39 +29,140 @@ services:
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
       - "--entrypoints.websecure.address=:443"
       - "--api.dashboard=true"
-      - "--api.insecure=true"
       - "--log.level=INFO"
       - "--accesslog=true"
       - "--api.debug=true"
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--metrics.prometheus=true"
+      - "--providers.docker.watch"
+      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
     volumes:
       - ./letsencrypt:/letsencrypt # Volume for certs (TLS)
       - /var/run/docker.sock:/var/run/docker.sock # Volume for docker admin
       - /home/zignage/traefik/supreme-carnival/.htpasswd:/.htpasswd
 
     networks:
-      - proxy
+      - tproxy
+      - appnet
+      - nginxrp
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`dashboard.test.mm.sobe.world`)"
-      - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik-ui.rule=Host(`${TRAEFIK_URL}`)"
+      - "traefik.http.routers.traefik-ui.service=api@internal"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}"
+      - "traefik.http.middlewares.traefik-auth.basicauth.removeheader=true"
+      - "traefik.http.routers.traefik-ui.middlewares=traefik-auth"
+      #- "traefik.http.middlewares.redirect-regex.redirectregex.replacement=https://mender2.zignage.sobe.world"
+      #- "traefik.http.middlewares.redirect-regex.redirectregex.permanent=false"
+
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - "11880:8082"
+      - "12884:8084"
+    volumes:
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginxproxy.entrypoints=websecure"
+      - "traefik.http.routers.nginxproxy.tls.certresolver=myresolver"
+      - "traefik.http.routers.nginxproxy.rule=Host(`nginxrp.zignage.sobe.world`)"
+      - "traefik.http.services.nginxproxy.loadbalancer.server.port=11880"
+      - "traefik.docker.network=tproxy"
+    environment:
+      VIRTUAL_HOST: mender4.zignage.sobe.world
+      LETSENCRYPT_HOST: mender4.zignage.sobe.world
+      VIRTUAL_PORT: 8084
+    networks:
+      - nginxrp
+      - tproxy
+
+  nginx-proxy-acme:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/etc/acme.sh
+    environment:
+      DEFAULT_EMAIL: raina@autistici.org
+    depends_on:
+      - nginx-proxy
+    networks:
+      - nginxrp
+
 
   whoami:
     image: traefik/whoami:latest
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mywhoami.rule=Host(`whoami.test.mm.sobe.world`)"
+      - "traefik.http.routers.mywhoami.rule=Host(`whoami4.zignage.sobe.world`)"
       - "traefik.http.routers.mywhoami.entrypoints=websecure"
       - "traefik.http.services.mywhoami.loadbalancer.server.port=80"
       - "traefik.http.routers.mywhoami.tls.certresolver=myresolver"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=tproxy"
     networks:
-      - proxy
+      - tproxy
+
+  grafana:
+    image: grafana/grafana
+    depends_on:
+      - prometheus
+    user: root
+    volumes:
+      - ${GRAFANA_VOLUME}:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    environment:
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    labels:
+      - "traefik.http.routers.grafana.rule=Host(`graf1.zignage.sobe.world`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.docker.network=tproxy"
+    networks:
+      - appnet
+      - tproxy
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"     
 
 
-
+  prometheus:
+    image: prom/prometheus
+    user: root
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - ${PROM_VOLUME}:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.size=256MB'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prom1.zignage.sobe.world`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.docker.network=tproxy"
+    networks:
+      - appnet
+      - tproxy
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   mongodb:
     restart: always
@@ -93,15 +194,15 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.meshcentral-secured.entrypoints=websecure"
-      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh.test.mm.sobe.world`)"
+      - "traefik.http.routers.meshcentral-secured.rule=Host(`mesh4.zignage.sobe.world`)"
       - "traefik.http.services.meshcentral.loadbalancer.server.port=4430"
-      - "traefik.docker.network=proxy"
+      - "traefik.docker.network=tproxy"
     networks:
       - meshcentral-tier
-      - proxy
+      - tproxy
     environment:
-      - HOSTNAME=mesh.test.mm.sobe.world     #your hostname
-      - REVERSE_PROXY=172.17.0.2     #set to your reverse proxy IP if you want to put meshcentral behind a reverse proxy
+      - HOSTNAME=mesh4.zignage.sobe.world     #your hostname
+      - REVERSE_PROXY=localhost     #set to your reverse proxy IP if you want to put meshcentral behind a reverse proxy
       - REVERSE_PROXY_TLS_PORT=443
       - IFRAME=false    #set to true if you wish to enable iframe support
       - ALLOW_NEW_ACCOUNTS=true    #set to false if you want disable self-service creation of new accounts besides the first (admin)
@@ -109,19 +210,29 @@ services:
       - BACKUPS_PW=MyAwesomePasswordPleaseChangeMe #password for the autobackup function
       - BACKUP_INTERVAL=24 # Interval in hours for the autobackup function
       - BACKUP_KEEP_DAYS=10 #number of days of backups the function keeps
-      - VIRTUAL_HOST=mesh.test.mm.sobe.world
+      - VIRTUAL_HOST=mesh4.zignage.sobe.world
       - VIRTUAL_PORT=4430
       - NODE_ENV=production
-      - LETSENCRYPT_HOST=mesh.mmtest.sobe.world
+      - LETSENCRYPT_HOST=mesh4.zignage.sobe.world
       - LETSENCRYPT_EMAIL=ggmethos@autistici.org
 
 networks:
   meshcentral-tier:
     driver: bridge
-  proxy:
+  tproxy:
     external: true
+
+  appnet:
+      name: appnet
+
+  nginxrp:
+      external: true
 
 volumes: 
   letsencrypt:
     name: letsencrypt
+  certs:
+  vhost:
+  html:
+  acme:
 
