@@ -1,0 +1,71 @@
+# This file lists software components that are part of a Mender release
+# which are published with the global Mender product version. The versions here
+# therefore point to the internal Git tags/branches. We keep this information as a
+# docker-compose YAML file for parsing purposes.
+services:
+
+    #
+    # backend open source services
+    #
+    mender-iot-manager:
+        image: mendersoftware/iot-manager:master
+
+    mender-deployments:
+        image: mendersoftware/deployments:master
+
+    mender-gui:
+        image: mendersoftware/gui:master
+
+    mender-device-auth:
+        image: mendersoftware/deviceauth:master
+
+    mender-inventory:
+        image: mendersoftware/inventory:master
+
+    mender-useradm:
+        image: mendersoftware/useradm:master
+
+    mender-deviceconnect:
+        image: mendersoftware/deviceconnect:master
+
+    mender-deviceconfig:
+        image: mendersoftware/deviceconfig:master
+
+    mender-reporting:
+        image: mendersoftware/reporting:master
+
+    mender-workflows-server:
+        image: mendersoftware/workflows:master
+
+    mender-workflows-worker:
+        image: mendersoftware/workflows-worker:master
+
+    mender-create-artifact-worker:
+        image: mendersoftware/create-artifact-worker:master
+
+    #
+    # client repositories - container and image names are placeholders
+    #
+    mender:
+        image: mendersoftware/mender:master
+
+    mender-connect:
+        image: mendersoftware/mender-connect:master
+
+    mender-setup:
+        image: mendersoftware/mender-setup:master
+
+    mender-snapshot:
+        image: mendersoftware/mender-snapshot:master
+
+    mender-configure-module:
+        image: mendersoftware/mender-configure-module:master
+
+    monitor-client:
+        image: mendersoftware/monitor-client:master
+
+    mender-gateway:
+        image: mendersoftware/mender-gateway:master
+
+    mender-ci-workflows:
+        image: mendersoftware/mender-ci-workflows:master

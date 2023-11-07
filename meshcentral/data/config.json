@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
   "settings": {
     "plugins":{"enabled": false},
-    "cert": "mesh1.ztest.sobe.world",
+    "cert": "mesh9.zignage.sobe.world",
     "_WANonly": true,
     "sessionKey": "keymanmanofkeys",
     "Port": 4430,
@@ -24,7 +24,7 @@
       "NewAccounts": true,
       "localSessionRecording": false,
       "_userNameIsEmail": true,
-      "_certUrl": "https://mesh1.ztest.sobe.world",
+      "_certUrl": "https://mesh9.zignage.sobe.world",
       "AgentConfig": [ "webSocketMaskOverride=1" ]
     }
   }
