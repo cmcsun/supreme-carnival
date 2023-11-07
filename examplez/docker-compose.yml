@@ -1,0 +1,204 @@
+version: '3'
+
+x-service_defaults: &service_defaults
+  restart: always
+  logging:
+    options:
+      max-size: "100m"
+      max-file: "3"
+  networks:
+    - znet
+
+x-zcast_defaults: &zcast_defaults
+  << : *service_defaults
+  image: zcast-cms
+  command: webserver
+  ports:
+    - 80
+    - 9002
+  links:
+    - "database:zcast-postgres"
+  environment:
+    - POSTGRES_HOST=zcast-postgres
+  volumes:
+    - /srv/zignage/cms:/srv/zignage/cms
+  healthcheck:
+      test: pgrep supervisor > /dev/null || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+services:
+  reverse-proxy:
+    << : *service_defaults
+    # The official v2 Traefik docker image
+    image: traefik:v2.8
+    container_name: proxy
+    ports:
+      # The HTTP port
+      - 80:80
+      # The HTTPS port
+      - 443:443
+      # The Web UI (enabled by --api.insecure=true)
+      - 8080:8080
+      # Other Port
+      - 9002:9002
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/traefik:/configuration
+      - /srv/zignage/ssl:/etc/ssl
+    # Enables the web UI and tells Traefik to listen to docker
+    command: 
+      - --log.level=DEBUG
+      - --api.insecure=true
+      - --api.dashboard=true
+      - --api.debug=true 
+      - --entrypoints.web.address=:80 
+      - --entrypoints.websecure.address=:443 
+      - --entrypoints.other.address=:9002 
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure 
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https 
+      - --entryPoints.web.forwardedHeaders.insecure 
+      - --entryPoints.websecure.forwardedHeaders.insecure 
+      - --entryPoints.other.forwardedHeaders.insecure 
+      - --ping=true
+      - --ping.entryPoint=websecure
+      - --ping.manualrouting=true
+      - --providers.docker=true 
+      - --providers.file.directory=/configuration/ 
+      - --providers.file.watch=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+      - --metrics.prometheus=true
+      - --tracing.jaeger=true
+      - --tracing.jaeger.localAgentHostPort=trace-agent:6831
+      - --tracing.jaeger.samplingServerURL=http://trace-agent:5778/sampling
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.tdash.loadbalancer.server.port=8080"
+      - "traefik.http.routers.tdash.entrypoints=web,websecure"
+      - "traefik.http.routers.tdash.rule=(HostRegexp(`{catchall:traefik.*}`) && PathPrefix(`/`))"
+      - "traefik.http.routers.tdash.tls=true"
+      - "traefik.http.routers.ping.entrypoints=web,websecure"
+      - "traefik.http.routers.ping.rule=(HostRegexp(`{catchall:.*}`) && PathPrefix(`/ping`))"
+      - "traefik.http.routers.ping.service=ping@internal"
+      - "traefik.http.routers.ping.tls=true"
+
+  autoheal:
+    image: willfarrell/autoheal
+    container_name: autoheal
+    tty: true
+    restart: always
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    environment:
+      - AUTOHEAL_INTERVAL=10
+      - CURL_TIMEOUT=30
+    labels:
+      - "traefik.enable=false"
+
+  cms-primary:
+    << : *zcast_defaults
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.primary.loadbalancer.server.port=80"
+      - "traefik.http.routers.primary.entrypoints=web,websecure"
+      - "traefik.http.routers.primary.rule=(HostRegexp(`{catchall:.*}`) && PathPrefix(`/`))"
+      - "traefik.http.routers.primary.service=primary"
+      - "traefik.http.routers.primary.tls=true"
+      - "traefik.http.routers.primary.priority=1"
+
+  cms-static-server:
+    << : *zcast_defaults
+    container_name: static-server
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.staticsrv.loadbalancer.server.port=80"
+      - "traefik.http.routers.staticsrv.entrypoints=web,websecure"
+      - "traefik.http.routers.staticsrv.rule=(HostRegexp(`{catchall:.*}`) && PathPrefix(`/static/`))"
+      - "traefik.http.routers.staticsrv.tls=true"
+      - "traefik.http.routers.staticsrv.priority=5"
+
+  cms-frontend-server-1: &cms-frontend
+    << : *zcast_defaults
+    container_name: zcast-cms-1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.fesrv.loadbalancer.server.port=80"
+      - "traefik.http.routers.fesrv.entrypoints=web,websecure"
+      - "traefik.http.routers.fesrv.service=fesrv"
+      - "traefik.http.routers.fesrv.rule=(\
+ HostRegexp(`{catchall:.*}`) \
+ && ( \
+    (Path(`/`) ) \
+  || (PathPrefix(`/login/`)) \
+  || (PathPrefix(`/zcast/`) \
+      && !(PathPrefix(`/zcast/command/`) || PathPrefix(`/zcast/createUserGroup/`)  || PathPrefix(`/zcast/upload`) )\
+     ) \
+  || (PathPrefix(`/api/layout/`) || PathPrefix(`/api/campaign/`) || PathPrefix(`/api/media`) || PathPrefix(`/api/user/`) )\
+ )\
+)"  
+      - "traefik.http.routers.fesrv.tls=true"
+      - "traefik.http.routers.fesrv.priority=2"
+
+  cms-frontend-server-2:
+    <<: *cms-frontend
+    container_name: zcast-cms-2
+
+  cms-frontend-server-3:
+    <<: *cms-frontend
+    container_name: zcast-cms-3
+
+  cms-frontend-server-4:
+    <<: *cms-frontend
+    container_name: zcast-cms-4
+
+  database:
+    << : *service_defaults
+    container_name: postgres
+    image: postgres
+    command: postgres -c 'max_connections=500'
+    user: "1000:1000"
+    volumes:
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql/data
+    ports:
+      - "5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-U", "zc_user", "-d", "zcast"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=false"
+
+############################################################################################################
+#                                                 Commands                                                 #
+############################################################################################################
+  cms-migration:
+    image: zcast-cms
+    container_name: cms_migration
+    profiles:
+      - "cms_migration"
+    networks:
+      - znet
+    command: upgrade_schema
+    links:
+      - "database:zcast-postgres"
+    environment:
+      - POSTGRES_HOST=zcast-postgres
+    volumes:
+      - /srv/zignage/apache2_http:/etc/apache2
+      - /srv/zignage/cms:/srv/zignage/cms
+
+networks:
+  znet:
+    internal: false
+    driver: bridge
+
+volumes:
+  pgdata:
+    external: true
+    name: pgdata

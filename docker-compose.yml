@@ -146,12 +146,40 @@ services:
     depends_on:
       - prometheus
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest 
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8070"
+    command:
+      - "-docker_only=true"
+      - '-housekeeping_interval=10s'
+  
+  tracer-agent:
+    image: jaegertracing/jaeger-agent:latest
+    container_name: trace-agent
+    command: ["--reporter.grpc.host-port=10.10.0.140:14250"]
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+    environment:
+      - JAEGER_AGENT_REPORTER_PROTOCOL=thrift # Use the Thrift protocol for Jaeger
+
   prometheus:
     image: prom/prometheus
+    container_name: prometheus
     user: root
     volumes:
       - ./prometheus/:/etc/prometheus/
       - ${PROM_VOLUME}:/prometheus
+      - ./monitoring/alert_core.rules:/core.rules
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -173,6 +201,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    depends_on:
+      - node_exporter
 
           #  prometheus:
           #    image: prom/prometheus:latest
@@ -224,9 +254,9 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
-  nodeexporter:
+  node_exporter:
     image: prom/node-exporter:latest
-    container_name: nodeexporter
+    container_name: node_exporter
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro

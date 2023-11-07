@@ -1,0 +1,135 @@
+version: "3.9"
+
+x-service_defaults: &service_defaults
+  restart: always
+  logging:
+    options:
+      max-size: "100m"
+      max-file: "3"
+  networks:
+    - znet
+
+services:
+  prometheus:
+    << : *service_defaults  
+    container_name: prometheus
+    user: "1000:1000"
+    image: prom/prometheus:v2.39.1
+    volumes:
+      - /srv/prometheus:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert_postgres.rules:/postgres.rules
+      - ./alert_core.rules:/core.rules
+    ports:
+      - "9090:9090"
+    depends_on:
+      - node_exporter
+      - cadvisor
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.prom.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prom.entrypoints=web,websecure"
+      - "traefik.http.routers.prom.rule=(HostRegexp(`{catchall:prometheus.*}`) && PathPrefix(`/`))"
+      - "traefik.http.routers.prom.tls=true"
+
+  alertmanager:
+    << : *service_defaults
+    container_name: alertmanager
+    image: prom/alertmanager
+    privileged: true
+    volumes:
+      - ./alertmanager.yml:/alertmanager.yml
+    command:
+      - "--config.file=/alertmanager.yml"
+    ports:
+      - '9093'
+    labels:
+      - "traefik.enable=false"
+
+  postgres_exporter:
+    << : *service_defaults
+    container_name: postgres_exporter
+    image: prometheuscommunity/postgres-exporter:v0.12.0-rc.0
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@postgres:5432/zcast?sslmode=disable
+      - PG_EXPORTER_INCLUDE_DATABASES=zcast 
+    ports:
+      - "9187"
+    labels:
+      - "traefik.enable=false"
+      
+  node_exporter:
+    << : *service_defaults
+    container_name: node_exporter
+    image: quay.io/prometheus/node-exporter:latest
+    restart: unless-stopped
+    ports:
+      - "9100"
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|host|etc|dev|run|var/lib/docker|tmp)($$|/)'
+    pid: host
+    volumes:
+      - '/:/host:ro'
+    labels:
+      - "traefik.enable=false"
+
+  grafana:
+    << : *service_defaults
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "3001:3000"
+    volumes:
+      - /srv/grafana/dashboards:/etc/grafana/dashboards
+      - /srv/grafana/provisioning:/etc/grafana/provisioning
+      - /srv/grafana/data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_SECURITY_ADMIN_USER=zignage
+      - GF_SECURITY_ADMIN_PASSWORD=zignage
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.entrypoints=web,websecure"
+      - "traefik.http.routers.grafana.rule=(HostRegexp(`{catchall:grafana.*}`) && PathPrefix(`/`))"
+      - "traefik.http.routers.grafana.tls=true"
+
+  tracer-agent:
+    << : *service_defaults
+    image: jaegertracing/jaeger-agent:latest
+    container_name: trace-agent
+    command: ["--reporter.grpc.host-port=10.10.0.140:14250"]
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+    environment:
+      - JAEGER_AGENT_REPORTER_PROTOCOL=thrift # Use the Thrift protocol for Jaeger
+
+  cadvisor:
+    << : *service_defaults
+    image: gcr.io/cadvisor/cadvisor:latest 
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080"
+    command:
+      - "-docker_only=true"
+      - '-housekeeping_interval=10s'
+
+networks:
+  znet:
+    external: true
+    name: zignage_znet
+

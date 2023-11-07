@@ -1,0 +1,10 @@
+services:
+  prometheus:
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.external-url=https://prometheus.iotecha-uat.zignage.com/"
+
+  alertmanager:
+    command:
+      - "--config.file=/alertmanager.yml"
+      - "--web.external-url=https://am.iotecha-uat.zignage.com/"

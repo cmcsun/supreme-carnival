@@ -1,0 +1,34 @@
+services:
+  cms-primary:
+    volumes:
+      - /srv/zignage/cms:/srv/zignage/cms
+#      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+#      - /srv/zignage/static/renderer/css/fonts.css:/opt/zignage/cms/cms/static/renderer/css/fonts.css
+#      - /srv/zignage/static/fonts/iotecha-fonts:/opt/zignage/cms/cms/static/fonts/iotecha-fonts
+#      - /srv/zignage/static/js/client/ui/controllers/baseController.js:/opt/zignage/cms/cms/static/js/client/ui/controllers/baseController.js
+
+  cms-static-server:
+    volumes:
+      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+      - /srv/zignage/static/renderer/css/fonts.css:/opt/zignage/cms/cms/static/renderer/css/fonts.css
+      - /srv/zignage/static/fonts/iotecha-fonts:/opt/zignage/cms/cms/static/fonts/iotecha-fonts
+#      - /srv/zignage/static/js/client/ui/controllers/baseController.js:/opt/zignage/cms/cms/static/js/client/ui/controllers/baseController.js
+
+  cms-frontend-server-1:
+    volumes:
+      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+#      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+#      - /srv/zignage/static/renderer/css/fonts.css:/opt/zignage/cms/cms/static/renderer/css/fonts.css
+#      - /srv/zignage/static/fonts/iotecha-fonts:/opt/zignage/cms/cms/static/fonts/iotecha-fonts
+#      - /srv/zignage/static/js/client/ui/controllers/baseController.js:/opt/zignage/cms/cms/static/js/client/ui/controllers/baseController.js
+
+  cms-frontend-server-2:
+    volumes:
+      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+  cms-frontend-server-3:
+    volumes:
+      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+  cms-frontend-server-4:
+    volumes:
+      - /srv/zignage/static/css/fonts.css:/opt/zignage/cms/cms/static/css/fonts.css
+

@@ -1,0 +1,45 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname']
+  group_wait: 60s
+  group_interval: 5m
+  repeat_interval: 6h
+  receiver: 'support'
+  routes:
+  - match:
+      customer: true
+    receiver: 'incident'
+    continue: false
+  - receiver: 'support'
+
+receivers:
+- name: 'incident'
+  email_configs:
+  - to: "bart@zignage.com, sasha@zignage.com, pvardaro@zignage.com"
+    from: 'noreply@zignage.com'
+    headers:
+      subject: "[iotecha-uat] {{ .Status | toUpper }} {{ .CommonLabels.alertname }}"
+    smarthost: smtp.gmail.com:587
+    auth_username: 'noreply@zignage.com'
+    auth_identity: 'noreply@zignage.com'
+    auth_password: '25Azerbaijan2023'
+- name: 'support'
+  email_configs:
+  - to: 'bart@zignage.com'
+    from: 'noreply@zignage.com'
+    headers:
+      subject: "[iotecha-uat] {{ .Status | toUpper }} {{ .CommonLabels.alertname }}"
+    smarthost: smtp.gmail.com:587
+    auth_username: 'noreply@zignage.com'
+    auth_identity: 'noreply@zignage.com'
+    auth_password: '25Azerbaijan2023'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+
