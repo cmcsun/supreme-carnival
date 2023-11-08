@@ -1,3 +1,0 @@
-[submodule "extra/gitdm/gitdm"]
-	path = extra/gitdm/gitdm
-	url = git://git.lwn.net/gitdm.git
