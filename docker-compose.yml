@@ -165,7 +165,7 @@ services:
     container_name: prometheus
     user: root
     volumes:
-      - ./prometheus/:/etc/prometheus/
+      - ./prometheus:/etc/prometheus/
       - ${PROM_VOLUME}:/prometheus
       - ./monitoring/alert_core.rules:/core.rules
     command:
